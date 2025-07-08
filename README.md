@@ -1,0 +1,1 @@
+# aws-cdk-backstage-manageRule-sample
