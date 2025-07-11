@@ -36,9 +36,9 @@ export class Ec2TagMonitorStack extends cdk.Stack {
    
     // ### config preparation
     
-    // AWS Config管理ルール: required-tags（既存のConfig設定を利用）
+    // AWS Config rule is required-tags ( required-tags is managed rule )
     const requiredTagsRule = new config.ManagedRule(this, 'RequiredTagsRule', {
-      configRuleName: 'RequiredEc2TagsRule', // 明示的なルール名を設定
+      configRuleName: 'RequiredEc2TagsRule',
       identifier: config.ManagedRuleIdentifiers.REQUIRED_TAGS,
       inputParameters: this.createRequiredTagsParameters(props.requiredTags),
       description: `EC2インスタンスに必須タグ [${props.requiredTags.join(', ')}] が設定されているかチェック`,
@@ -56,7 +56,7 @@ export class Ec2TagMonitorStack extends cdk.Stack {
         source: ['aws.config'],
         detailType: ['Config Rules Compliance Change'],
         detail: {
-          configRuleName: ['RequiredEc2TagsRule'], // 明示的なルール名を使用
+          configRuleName: ['RequiredEc2TagsRule'], 
           newEvaluationResult: {
             complianceType: ['NON_COMPLIANT'], // from AWS Config
           },
@@ -68,29 +68,32 @@ export class Ec2TagMonitorStack extends cdk.Stack {
     // EventBridge: Target (setting send information)
     configComplianceRule.addTarget(
       new targets.SnsTopic(notificationTopic, {
-        message: events.RuleTargetInput.fromText(
-          `【AWS Config】EC2インスタンスのタグコンプライアンス違反が検出されました
-
-■ 詳細情報
-- 検出時刻: ${events.EventField.fromPath('$.time')}
-- リージョン: ${events.EventField.fromPath('$.detail.awsRegion')}
-- アカウント: ${events.EventField.fromPath('$.detail.awsAccountId')}
-- リソースID: ${events.EventField.fromPath('$.detail.resourceId')}
-- リソースタイプ: ${events.EventField.fromPath('$.detail.resourceType')}
-- Config ルール: ${events.EventField.fromPath('$.detail.configRuleName')}
-- コンプライアンス状態: ${events.EventField.fromPath('$.detail.newEvaluationResult.complianceType')}
-
-■ 対応が必要な事項
-1. 該当のEC2インスタンスに必須タグ「user_name」を追加してください
-2. 今後のインスタンス起動時は必須タグを設定してください
-3. タグ付けポリシーの遵守を確認してください
-
-■ AWS Console リンク
-- EC2 Console: https://console.aws.amazon.com/ec2/v2/home?region=${events.EventField.fromPath('$.detail.awsRegion')}#Instances:instanceId=${events.EventField.fromPath('$.detail.resourceId')}
-- Config Console: https://console.aws.amazon.com/config/home?region=${events.EventField.fromPath('$.detail.awsRegion')}#/rules/details?configRuleName=${events.EventField.fromPath('$.detail.configRuleName')}
-
-このメッセージは AWS Config による自動監視システムから送信されています。`
-        ),
+        message: events.RuleTargetInput.fromObject({
+          subject: 'EC2タグコンプライアンス違反が検出されました',
+          message: [
+            '【AWS Config】EC2インスタンスのタグコンプライアンス違反が検出されました',
+            '',
+            '■ 詳細情報',
+            `- 検出時刻: ${events.EventField.fromPath('$.time')}`,
+            `- リージョン: ${events.EventField.fromPath('$.detail.awsRegion')}`,
+            `- アカウント: ${events.EventField.fromPath('$.detail.awsAccountId')}`,
+            `- リソースID: ${events.EventField.fromPath('$.detail.resourceId')}`,
+            `- リソースタイプ: ${events.EventField.fromPath('$.detail.resourceType')}`,
+            `- Config ルール: ${events.EventField.fromPath('$.detail.configRuleName')}`,
+            `- コンプライアンス状態: ${events.EventField.fromPath('$.detail.newEvaluationResult.complianceType')}`,
+            '',
+            '■ 対応が必要な事項',
+            '1. 該当のEC2インスタンスに必須タグを追加してください',
+            '2. 今後のインスタンス起動時は必須タグを設定してください',
+            '3. タグ付けポリシーの遵守を確認してください',
+            '',
+            '■ AWS Console リンク',
+            `- EC2 Console: https://console.aws.amazon.com/ec2/v2/home?region=${events.EventField.fromPath('$.detail.awsRegion')}#Instances:instanceId=${events.EventField.fromPath('$.detail.resourceId')}`,
+            `- Config Console: https://console.aws.amazon.com/config/home?region=${events.EventField.fromPath('$.detail.awsRegion')}#/rules/details?configRuleName=${events.EventField.fromPath('$.detail.configRuleName')}`,
+            '',
+            'このメッセージは AWS Config による自動監視システムから送信されています。',
+          ].join('\n'),
+        }),
       })
     );
 
